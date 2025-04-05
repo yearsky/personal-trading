@@ -19,6 +19,12 @@ export default function Home() {
   const [selectedAccount, setSelectedAccount] = useState<string>("");
   const [availableAccounts, setAvailableAccounts] = useState<string[]>([]);
 
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [tempSelectedAccount, setTempSelectedAccount] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
+
   // Ambil daftar akun yang tersedia dari database saat komponen dimuat
   useEffect(() => {
     fetchAvailableAccounts();
@@ -268,7 +274,10 @@ export default function Home() {
               {availableAccounts.map((account) => (
                 <div 
                   key={account}
-                  onClick={() => setSelectedAccount(account)}
+                  onClick={() => {
+                    setTempSelectedAccount(account);
+                    setShowPasswordModal(true);
+                  }}
                   className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                     selectedAccount === account 
                       ? "border-blue-600 bg-blue-50" 
@@ -339,6 +348,50 @@ export default function Home() {
           </div>
         )}
       </main>
+      {showPasswordModal && (
+  <div className="fixed inset-0 flex items-center justify-center backdrop-blur-sm bg-black/30 z-50">
+
+    <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-sm">
+      <h2 className="text-lg font-semibold text-gray-800 mb-4">Enter Password</h2>
+      <input
+        type="password"
+        placeholder="Password"
+        className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      {passwordError && <p className="text-red-500 mt-2 text-sm">{passwordError}</p>}
+      <div className="mt-4 flex justify-end gap-2">
+        <button
+          onClick={() => {
+            setShowPasswordModal(false);
+            setPassword("");
+            setPasswordError("");
+          }}
+          className="px-4 py-2 rounded-md bg-gray-300 text-gray-700 hover:bg-gray-400"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={() => {
+            if (password === "test1234") {
+              setSelectedAccount(tempSelectedAccount!);
+              setShowPasswordModal(false);
+              setPassword("");
+              setPasswordError("");
+            } else {
+              setPasswordError("Incorrect password");
+            }
+          }}
+          className="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+        >
+          Submit
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }
