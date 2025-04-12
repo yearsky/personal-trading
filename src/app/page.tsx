@@ -71,7 +71,6 @@ export default function Home() {
       setError("Error fetching trades: " + error.message);
       console.error(error);
     } else if (data && data.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const parsedTrades: Trade[] = data
         .map((row: any) => ({
           openTime: row.open_time,
