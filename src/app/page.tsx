@@ -66,22 +66,34 @@ export default function Home() {
       .from("trades")
       .select("*")
       .eq("account_number", account);
-
+  
     if (error) {
       setError("Error fetching trades: " + error.message);
       console.error(error);
     } else if (data && data.length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const parsedTrades: Trade[] = data.map((row: any) => ({
-        openTime: row.open_time,
-        closeTime: row.close_time,
-        type: row.type,
-        item: row.item,
-        profit: parseFloat(row.profit) || 0,
-      }));
-      setTrades(parsedTrades);
-      setAccountNumber(account);
-      setError(null);
+      const parsedTrades: Trade[] = data
+        .map((row: any) => ({
+          openTime: row.open_time,
+          closeTime: row.close_time,
+          type: row.type,
+          item: row.item,
+          profit: parseFloat(row.profit) || 0,
+          volume: parseFloat(row.volume) || 0,
+          openPrice: parseFloat(row.open_price) || 0,
+          closePrice: parseFloat(row.close_price) || 0,
+        }))
+        // Filter out invalid trades
+        .filter((trade) => trade.volume > 0 && trade.openPrice > 0 && trade.closePrice > 0);
+  
+      if (parsedTrades.length > 0) {
+        setTrades(parsedTrades);
+        setAccountNumber(account);
+        setError(null);
+      } else {
+        setTrades([]);
+        setError("No valid trades found for this account. Please upload a CSV with valid trades.");
+      }
     } else {
       setTrades([]);
       setError("No trades found for this account. Please upload a CSV.");
@@ -115,6 +127,7 @@ export default function Home() {
     }
   };
 
+  // Baris perubahan di file Home.tsx untuk parsing CSV
   const parseCSVFile = (file: File) => {
     Papa.parse(file, {
       delimiter: ";",
@@ -124,14 +137,14 @@ export default function Home() {
           const accountRow = result.data[1];
           const accountNum = accountRow[1] || "Unknown";
           setAccountNumber(accountNum);
-
+  
           const startIndex = result.data.findIndex((row) =>
             row[0] === "Closed Transactions:"
           );
           if (startIndex === -1) {
             throw new Error("No 'Closed Transactions' section found");
           }
-
+  
           const dataRows = result.data.slice(startIndex + 2);
           const parsedTrades: Trade[] = dataRows
             .filter(
@@ -147,8 +160,13 @@ export default function Home() {
               type: row[2],
               item: row[4],
               profit: parseFloat(row[13]) || 0,
-            }));
-
+              volume: parseFloat(row[3]) || 0,
+              openPrice: parseFloat(row[5]) || 0,
+              closePrice: parseFloat(row[9]) || 0,
+            }))
+            // Add filter for valid trades (non-zero volume, openPrice, closePrice)
+            .filter((trade) => trade.volume > 0 && trade.openPrice > 0 && trade.closePrice > 0);
+  
           // Simpan ke Supabase
           const tradesToInsert = parsedTrades.map((trade) => ({
             account_number: accountNum,
@@ -157,23 +175,25 @@ export default function Home() {
             type: trade.type,
             item: trade.item,
             profit: trade.profit,
+            volume: trade.volume,
+            open_price: trade.openPrice,
+            close_price: trade.closePrice,
           }));
-
+  
           const { error: insertError } = await supabase
             .from("trades")
             .insert(tradesToInsert);
-
+  
           if (insertError) {
             throw new Error("Error saving to database: " + insertError.message);
           }
-
+  
           setTrades(parsedTrades);
           setSelectedAccount(accountNum);
           setError(null);
-          
+  
           // Perbarui daftar akun yang tersedia
           fetchAvailableAccounts();
-          
         } catch (err) {
           setError(
             "Error parsing CSV file: " +
